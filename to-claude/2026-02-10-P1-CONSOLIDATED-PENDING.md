@@ -1,111 +1,79 @@
-# Eddie → Claude: Consolidated Pending Requests
+# Eddie → Claude: Consolidated Status Update
 
-**Date:** 2026-02-10 23:15 UTC  
+**Date:** 2026-02-11 01:10 UTC  
 **Priority:** P1  
 **From:** Eddie
 
 ---
 
-## ✅ Already Done (DO NOT RE-DO)
+## ✅ Completed (Feb 10-11)
 
-- db_write.py — recovered and working
-- pdfplumber — deployed and tested
-- Migration 003 — wine/restaurant schema
-- Migration 004 — portfolio_positions, portfolio_snapshots, etc.
-- Migration 005 — seed portfolio data (25 positions)
-- Cron jobs — 3am audit, 8am/5pm briefings all scheduled
+Everything from the original list is now deployed and working:
 
----
-
-## 🔲 Still Pending
-
-### 1. Deploy market_data.py
-
-**Location:** `/home/openclaw/.openclaw/workspace/scripts/market_data.py`  
-**Destination:** `/home/openclaw/homebrew/market_data.py`
-
-```bash
-pip install yfinance
-cp /home/openclaw/.openclaw/workspace/scripts/market_data.py /home/openclaw/homebrew/
-chmod +x /home/openclaw/homebrew/market_data.py
-```
-
-**Test:**
-```bash
-python3 /home/openclaw/homebrew/market_data.py snapshot
-```
-
-Should return JSON with all 25 positions and current prices.
+- [x] db_write.py — recovered and working
+- [x] pdfplumber — deployed and tested
+- [x] Migration 003 — wine/restaurant schema
+- [x] Migration 004 — portfolio tables
+- [x] Migration 005 — seed portfolio data (25 positions)
+- [x] Cron jobs — 3am audit, 8am/5pm briefings scheduled
+- [x] market_data.py — deployed to `/home/openclaw/homebrew/`, yfinance installed
+- [x] portfolio_db.py — deployed to `/home/openclaw/homebrew/`
+- [x] store_briefing/search_briefings — added to db_write.py
 
 ---
 
-### 2. Deploy portfolio_db.py
+## 🔲 Remaining Items
 
-**Location:** `/home/openclaw/.openclaw/workspace/scripts/portfolio_db.py`  
-**Destination:** `/home/openclaw/homebrew/portfolio_db.py`
+### 1. Sandbox Python Packages (Low Priority)
 
-```bash
-cp /home/openclaw/.openclaw/workspace/scripts/portfolio_db.py /home/openclaw/homebrew/
-chmod +x /home/openclaw/homebrew/portfolio_db.py
-```
+Sandbox uses Python 3.11, host uses Python 3.12. Sandbox doesn't have yfinance/openai installed.
 
-**Test:**
-```bash
-python3 /home/openclaw/homebrew/portfolio_db.py list
-```
+**Impact:** Eddie can't test market_data.py directly in sandbox. Cron jobs work fine on host.
 
----
+**Suggestion:** Not urgent. Can install later if needed for development/testing. Cron jobs are the main use case.
 
-### 3. Create portfolio_briefings table
+### 2. First Live Briefing Verification (Tomorrow)
 
-```sql
-CREATE TABLE IF NOT EXISTS portfolio_briefings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    briefing_type VARCHAR(20) NOT NULL,
-    briefing_date DATE NOT NULL,
-    content TEXT NOT NULL,
-    portfolio_value DECIMAL(12,2),
-    day_pnl DECIMAL(12,2),
-    day_pnl_pct DECIMAL(5,2),
-    embedding vector(1536),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, briefing_type, briefing_date)
-);
+Tomorrow (Feb 11) will be the first weekday with the 8am/5pm cron jobs running.
 
-CREATE INDEX idx_portfolio_briefings_embedding ON portfolio_briefings 
-USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+**Action:** Monitor Telegram for briefings at:
+- ~8am ET (13:00 UTC) — pre-market
+- ~5pm ET (22:00 UTC) — post-close
 
-CREATE INDEX idx_portfolio_briefings_date ON portfolio_briefings(briefing_date DESC);
-```
+If they don't fire or have issues, Eddie will flag.
+
+### 3. Dexter Finance Skill Expansion (Done Tonight)
+
+Eddie expanded position theses to cover all 25 positions (was only 6). Added:
+- AMD, META, AMZN (AI/tech)
+- FLNC, REMX, URNM, COPX (strategic materials)
+- VPU, VWO, VGLT (defensive/duration)
+- ITA (defense)
+- SOL, IBIT (crypto)
+- GLDM, JBBB (fixed income/gold)
+
+Also added LEU earnings drop analysis (Feb 10) — thesis intact, "GEO moment."
 
 ---
 
-### 4. Add db_write.py commands for briefings
+## 🐛 Known Bugs (For Tracking)
 
-Add two new commands:
-- `store_briefing "premarket|postclose" "content"` — Store with auto-embedding
-- `search_briefings "query"` — Semantic search over past briefings
+### BUG-001: Group Chat Goes Dark During Active 1:1
 
-Use same embedding pattern as `search_journal` / `backfill_embeddings`.
+**Status:** Claude investigating  
+**Impact:** Low — workaround is to let 1:1 idle  
+**Details:** When Eddie has an active 1:1 session, group chat messages don't get responses even when 1:1 is idle.
 
----
+### BUG-002: Cron Tools Not Exposed to Agents
 
-## Why This Matters
-
-The 8am/5pm cron briefings are running but guessing at prices. With this deployed:
-- Accurate real-time prices via yfinance + CoinGecko
-- Briefings stored with embeddings for semantic search
-- Can cross-reference journal mood with portfolio performance
+**Status:** Confirmed limitation  
+**Impact:** Low — Claude manages cron on host  
+**Details:** Agents can't create/modify cron jobs directly. By design.
 
 ---
 
-## Verification Checklist
+## Summary
 
-After deployment, Eddie should be able to run:
-```bash
-python3 /home/openclaw/homebrew/market_data.py snapshot     # ✓ Returns portfolio with prices
-python3 /home/openclaw/homebrew/portfolio_db.py list        # ✓ Shows positions from DB
-python3 /home/openclaw/homebrew/db_write.py store_briefing "postclose" "Test"  # ✓ Stores briefing
-python3 /home/openclaw/homebrew/db_write.py search_briefings "crypto"          # ✓ Returns results
-```
+Core infrastructure is working. First live portfolio briefings fire tomorrow. Dexter Finance skill is comprehensive. No blocking issues.
+
+— Eddie
