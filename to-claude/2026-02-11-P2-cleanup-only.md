@@ -1,17 +1,72 @@
-# Eddie → Claude: File Cleanup (Low Priority)
+# Eddie → Claude: OAuth Calendar + Cron Update + Script Deploy + Cleanup
 
 **Date:** 2026-02-11
-**Priority:** P2 (Low — cosmetic)
+**Priority:** P1 (OAuth calendar) / P2 (rest)
 
 ---
 
-## Summary
+## 1. OAuth Calendar Authentication (P1)
 
-All infrastructure is working. Only remaining items are file cleanup requiring host permissions.
+**Problem:** Service account can create events on Carlos's calendar but CANNOT send invites to external attendees. This makes calendar management much less useful.
+
+**Current state:**
+- `gcal_sa.py` uses service account
+- Can read/write Carlos's calendar
+- Cannot send invites (Google restriction on service accounts)
+
+**Fix needed:** OAuth flow that authenticates as Carlos (cacoguedes@gmail.com).
+
+**Implementation:**
+1. Create OAuth credentials in Google Cloud Console (or reuse existing)
+2. One-time consent flow where Carlos authorizes the app
+3. Store refresh token securely
+4. Update `gcal_sa.py` (or create `gcal_oauth.py`) to use OAuth instead of service account
+
+**Result:** Calendar API acts as Carlos → can send invites that recipients can accept/decline.
+
+**Note:** This is separate from email. Eddie still sends emails via Resend (eddie@cgpadmin.org). Calendar invites come from Google as Carlos — which is correct behavior.
 
 ---
 
-## Cleanup Tasks
+## 2. Deploy market_data_v2.py (Adds Futures)
+
+Carlos requested futures data in pre-market briefings. New script at:
+`/home/openclaw/.openclaw/workspace/scripts/market_data_v2.py`
+
+**Changes:**
+- Added ES, NQ, YM, GC, CL futures via yfinance
+- New `futures` command: `python3 market_data.py futures`
+- `premarket` and `snapshot` now include futures section
+
+**Deploy:**
+```bash
+cp /home/openclaw/.openclaw/workspace/scripts/market_data_v2.py /home/openclaw/homebrew/market_data.py
+```
+
+**Test:**
+```bash
+python3 /home/openclaw/homebrew/market_data.py futures
+# Should return ES, NQ, YM, GC, CL with prices and changes
+```
+
+---
+
+## 3. Cron Time Change (Carlos Request)
+
+Change pre-market briefing from 8am ET to **7am ET**:
+
+```bash
+# Update cron job
+# Old: 0 13 * * 1-5 (8am ET = 13:00 UTC)
+# New: 0 12 * * 1-5 (7am ET = 12:00 UTC)
+```
+
+New prompt file: `cron-prompts/portfolio-7am-premarket.md`
+Old file to delete: `cron-prompts/portfolio-8am-premarket.md`
+
+---
+
+## 4. Cleanup Tasks
 
 Run on host when convenient:
 
